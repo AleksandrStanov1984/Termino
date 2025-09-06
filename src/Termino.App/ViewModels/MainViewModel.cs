@@ -11,6 +11,7 @@ using Termino.Domain.Entities;
 using Termino.Domain.Enums;
 using Termino.Localization.Core;
 using System.Windows;
+using Termino.App.Views;
 
 namespace Termino.App.ViewModels;
 public partial class MainViewModel : ObservableObject
@@ -159,97 +160,49 @@ public partial class MainViewModel : ObservableObject
         Owner = Application.Current.MainWindow }; w.ShowDialog(); 
     }
 
-    [RelayCommand] 
+    // ADD
+    [RelayCommand]
     private async Task Add()
     {
-        var vm = new TermEditorViewModel(new TermItem
+        var vm = new TermEditorViewModel(); // пустая форма
+        var w = new TermEditorWindow { DataContext = vm, Owner = Application.Current.MainWindow };
+        if (w.ShowDialog() == true)
         {
-            DueAt = DateTimeOffset.Now.AddMinutes(70), Status=TermStatus.Pending
-        });
-
-        var w=new TermEditorWindow
-        {
-            DataContext=vm, Owner = Application.Current.MainWindow
-        };
-
-        if(w.ShowDialog()==true)
-        {
-            using var s = App.AppHost!.Services.CreateScope();
-
+            var entity = vm.ToEntity();
+            using var s = App.AppHost.Services.CreateScope();
             var repo = s.ServiceProvider.GetRequiredService<ITermRepository>();
-
-            await repo.AddAsync(vm.Item); 
-
+            await repo.AddAsync(entity);
             await Refresh();
-
-            ShowBanner(Localizer.Instance["Banner_Saved"], Colors.SeaGreen);
+            ApplyFilter();
         }
-
-        //await Refresh();
-        ApplyFilter();
     }
 
+    // EDIT
     [RelayCommand]
     private async Task EditSelected()
     {
-        if (SelectedItem is null)
-            return;
+        if (SelectedItem is null) return;
 
-        var clone = new TermItem
+        // передаём копию выбранного элемента
+        var vm = new TermEditorViewModel(new TermItem
         {
             Id = SelectedItem.Id,
             Title = SelectedItem.Title,
             Description = SelectedItem.Description,
             DueAt = SelectedItem.DueAt,
-            Status = SelectedItem.Status,
-            CreatedAt = SelectedItem.CreatedAt,
-            UpdatedAt = SelectedItem.UpdatedAt,
-            CompletedAt = SelectedItem.CompletedAt,
-            LastReminderSentAt = SelectedItem.LastReminderSentAt,
-            Reminder24hSentAt = SelectedItem.Reminder24hSentAt,
-            Reminder12hSentAt = SelectedItem.Reminder12hSentAt,
-            Reminder1hSentAt = SelectedItem.Reminder1hSentAt
-        };
+            Status = SelectedItem.Status
+        });
 
-        var vm = new TermEditorViewModel(clone);
-
-        var w = new TermEditorWindow
-        {
-            DataContext = vm,
-            Owner = Application.Current.MainWindow
-        };
-
+        var w = new TermEditorWindow { DataContext = vm, Owner = Application.Current.MainWindow };
         if (w.ShowDialog() == true)
         {
-            using var s = App.AppHost!.Services.CreateScope();
-
+            var entity = vm.ToEntity();
+            using var s = App.AppHost.Services.CreateScope();
             var repo = s.ServiceProvider.GetRequiredService<ITermRepository>();
-
-            // принудительно вернуть в “открыто”
-            vm.Item.Status = TermStatus.Pending;      // если у тебя статус называется иначе (Open/Pending) – подставь своё имя
-
-            vm.Item.CompletedAt = null;              // убрать отметку выполнения
-
-            // сбросить флаги отправленных напоминаний, чтобы по новой дате они ушли заново
-            vm.Item.LastReminderSentAt = null;
-
-            vm.Item.Reminder24hSentAt = null;
-
-            vm.Item.Reminder12hSentAt = null;
-
-            vm.Item.Reminder1hSentAt = null;
-
-            vm.Item.UpdatedAt = System.DateTimeOffset.Now;
-
-            await repo.UpdateAsync(vm.Item);
-
+            await repo.UpdateAsync(entity);
             await Refresh();
-
-            ShowBanner(Localizer.Instance["Banner_Updated"], Colors.SeaGreen);
+            ApplyFilter();
         }
-
-        //await Refresh();
-        ApplyFilter();
     }
 
 

@@ -1,48 +1,184 @@
-﻿using CommunityToolkit.Mvvm.ComponentModel;
+﻿using System;
+using System.ComponentModel.DataAnnotations;
+using System.Linq;
+using System.Text;
+using System.Windows;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using Termino.Domain.Entities;
+using Termino.Domain.Enums;
 
 namespace Termino.App.ViewModels;
 
-/// VM для окна добавления/редактирования
-public partial class TermEditorViewModel : ObservableObject
+// VM редактора/добавления термина
+public partial class TermEditorViewModel : ObservableValidator
 {
-    public TermItem Item { get; }
+    private readonly bool _isEdit;
 
-    public string Title => Item.CreatedAt == default
-        ? "Новый термин"
-        : "Изменить термин";
-
-    public TermEditorViewModel(TermItem item)
+    public TermEditorViewModel(TermItem? item = null)
     {
-        Item = item;
+        _isEdit = item != null;
 
-        // Минимум: сейчас + 70 минут, чтобы точно пройти все проверки
-        if (Item.DueAt < System.DateTimeOffset.Now.AddMinutes(70))
-            Item.DueAt = System.DateTimeOffset.Now.AddMinutes(70);
+        if (item == null)
+        {
+            // значения по умолчанию: + 1ч 10м
+            var min = DateTime.Now.AddMinutes(70);
+            DueDate = min.Date;
+            DueTime = min.TimeOfDay;
+            Status = TermStatus.Pending;
+        }
+        else
+        {
+            Id = item.Id;
+            Title = item.Title;
+            Description = item.Description;
+            DueDate = item.DueAt.LocalDateTime.Date;
+            DueTime = item.DueAt.LocalDateTime.TimeOfDay;
+            Status = item.Status;
+        }
 
-        _dueDate = Item.DueAt.LocalDateTime.Date;
-
-        _dueTimeText = Item.DueAt.ToLocalTime().ToString("HH:mm");
+        // один раз валидируем стартовые значения (чтобы сразу подсветка/кнопка)
+        ValidateAllProperties();
+        SaveCommand.NotifyCanExecuteChanged();
     }
 
-    [ObservableProperty] 
-    private System.DateTime _dueDate;
+    public Guid Id { get; private set; }
 
-    [ObservableProperty] 
-    private string _dueTimeText = "12:00";
+    [ObservableProperty]
+    [Required(ErrorMessage = "Введите название")]
+    [MinLength(2, ErrorMessage = "Название слишком короткое")]
+    private string? title;
 
-    partial void OnDueDateChanged(DateTime value) => UpdateDueAt();
+    [ObservableProperty]
+    [Required(ErrorMessage = "Введите описание")]
+    [MinLength(2, ErrorMessage = "Описание слишком короткое")]
+    private string? description;
 
-    partial void OnDueTimeTextChanged(string value) => UpdateDueAt();
+    [ObservableProperty]
+    [Required(ErrorMessage = "Выберите дату")]
+    private DateTime? dueDate;
 
-    private void UpdateDueAt()
+    [ObservableProperty]
+    [Required(ErrorMessage = "Выберите время")]
+    private TimeSpan? dueTime;
+
+    [ObservableProperty]
+    private TermStatus status = TermStatus.Pending;
+
+    // Автовалидация и обновление доступности кнопки Сохранить
+    partial void OnTitleChanged(string? value)
     {
-        if (TimeSpan.TryParse(_dueTimeText, out var t))
-        {
-            var local = new DateTime(_dueDate.Year, _dueDate.Month, _dueDate.Day,
-                                            t.Hours, t.Minutes, 0, DateTimeKind.Local);
+        ValidateProperty(value, nameof(Title));
+        SaveCommand.NotifyCanExecuteChanged();
+    }
+    partial void OnDescriptionChanged(string? value)
+    {
+        ValidateProperty(value, nameof(Description));
+        SaveCommand.NotifyCanExecuteChanged();
+    }
+    partial void OnDueDateChanged(DateTime? value)
+    {
+        ValidateProperty(value, nameof(DueDate));
+        SaveCommand.NotifyCanExecuteChanged();
+    }
+    partial void OnDueTimeChanged(TimeSpan? value)
+    {
+        ValidateProperty(value, nameof(DueTime));
+        SaveCommand.NotifyCanExecuteChanged();
+    }
 
-            Item.DueAt = new DateTimeOffset(local);
+    private DateTimeOffset BuildDueAtLocal()
+    {
+        // Дата и время — обязательны, проверены выше
+        var local = DateTime.SpecifyKind(DueDate!.Value.Date + DueTime!.Value, DateTimeKind.Local);
+        return new DateTimeOffset(local);
+    }
+
+    private bool ValidateBusinessRules(out string? error)
+    {
+        // 1) дата/время уже проверены атрибутами Required
+        // 2) минимум через 1ч10м
+        var min = DateTimeOffset.Now.AddMinutes(70);
+        var due = BuildDueAtLocal();
+
+        if (due < min)
+        {
+            error = $"Минимальное время: не раньше {min:dd.MM.yyyy HH:mm}";
+            return false;
         }
+
+        error = null;
+        return true;
+    }
+
+    private string CollectAllErrors()
+    {
+        var sb = new StringBuilder();
+        foreach (var kv in GetErrors().GroupBy(e => e.MemberNames.FirstOrDefault() ?? string.Empty))
+        {
+            foreach (var err in kv)
+                sb.AppendLine(err.ErrorMessage);
+        }
+        return sb.ToString().Trim();
+    }
+
+    public TermItem ToEntity()
+    {
+        return new TermItem
+        {
+            Id = Id == Guid.Empty ? Guid.NewGuid() : Id,
+            Title = Title!.Trim(),
+            Description = Description!.Trim(),
+            DueAt = BuildDueAtLocal(),
+            Status = Status,
+        };
+    }
+
+    // --- Команды ---
+
+    [RelayCommand(CanExecute = nameof(CanSave))]
+    private void Save()
+    {
+        // Проверяем DataAnnotations
+        ValidateAllProperties();
+
+        // И бизнес-правила
+        string? businessError = null;
+
+        var isBusinessOk = ValidateBusinessRules(out businessError);
+
+        if (HasErrors || !isBusinessOk)
+        {
+            var text = !string.IsNullOrWhiteSpace(businessError)
+                ? businessError!
+                : CollectAllErrors();
+
+            MessageBox.Show(text, "Вы заполнили не все поля !",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        // Всё ок — закрываем окно с DialogResult=true
+        CloseWithResult(true);
+    }
+
+    private bool CanSave() =>
+        !HasErrors &&
+        !string.IsNullOrWhiteSpace(Title) &&
+        !string.IsNullOrWhiteSpace(Description) &&
+        DueDate is not null &&
+        DueTime is not null;
+
+    [RelayCommand]
+    private void Cancel() => CloseWithResult(false);
+
+    // аккуратное закрытие через владельца окна
+    private void CloseWithResult(bool result)
+    {
+        var win = Application.Current?.Windows.OfType<Window>()
+                      .FirstOrDefault(w => ReferenceEquals(w.DataContext, this));
+        if (win is null) return;
+        win.DialogResult = result;
+        win.Close();
     }
 }
