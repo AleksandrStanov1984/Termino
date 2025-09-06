@@ -46,12 +46,14 @@ public partial class TermEditorViewModel : ObservableValidator
 
     [ObservableProperty]
     [Required(ErrorMessage = "Введите название")]
-    [MinLength(2, ErrorMessage = "Название слишком короткое")]
+    [StringLength(50, MinimumLength = 5,
+    ErrorMessage = "Название должно быть от 5 до 50 символов")]
     private string? title;
 
     [ObservableProperty]
     [Required(ErrorMessage = "Введите описание")]
-    [MinLength(2, ErrorMessage = "Описание слишком короткое")]
+    [StringLength(200, MinimumLength = 10,
+    ErrorMessage = "Описание должно быть от 10 до 500 символов")]
     private string? description;
 
     [ObservableProperty]
@@ -71,16 +73,19 @@ public partial class TermEditorViewModel : ObservableValidator
         ValidateProperty(value, nameof(Title));
         SaveCommand.NotifyCanExecuteChanged();
     }
+
     partial void OnDescriptionChanged(string? value)
     {
         ValidateProperty(value, nameof(Description));
         SaveCommand.NotifyCanExecuteChanged();
     }
+
     partial void OnDueDateChanged(DateTime? value)
     {
         ValidateProperty(value, nameof(DueDate));
         SaveCommand.NotifyCanExecuteChanged();
     }
+
     partial void OnDueTimeChanged(TimeSpan? value)
     {
         ValidateProperty(value, nameof(DueTime));
@@ -139,6 +144,10 @@ public partial class TermEditorViewModel : ObservableValidator
     [RelayCommand(CanExecute = nameof(CanSave))]
     private void Save()
     {
+        // подрезаем пробелы, чтобы "пять пробелов" не считались валидными
+        Title = Title?.Trim();
+        Description = Description?.Trim();
+
         // Проверяем DataAnnotations
         ValidateAllProperties();
 
