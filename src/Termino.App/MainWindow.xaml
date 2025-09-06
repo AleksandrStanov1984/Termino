@@ -1,0 +1,145 @@
+<Window x:Class="Termino.App.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="clr-namespace:Termino.App.ViewModels"
+        xmlns:conv="clr-namespace:Termino.App.Converters"
+        xmlns:loc="clr-namespace:Termino.Localization.Wpf;assembly=Termino.Localization.Wpf"
+        Title="{loc:Loc App_Title}" Height="640" Width="1000" Background="#FFF7F7F9">
+
+    <!-- VM -->
+    <Window.DataContext>
+        <vm:MainViewModel/>
+    </Window.DataContext>
+
+    <!-- Ресурсы окна -->
+    <Window.Resources>
+        <conv:TermRowBrushConverter x:Key="TermRowBrushConverter"/>
+        <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+    </Window.Resources>
+
+    <DockPanel>
+
+        <!-- БАННЕР -->
+        <Border DockPanel.Dock="Top"
+            Background="{Binding BannerBrush}" Height="32"
+            Visibility="{Binding IsBannerVisible, Converter={StaticResource BoolToVis}}"
+            Padding="8">
+            <TextBlock Text="{Binding BannerText}" Foreground="White"
+                 VerticalAlignment="Center" FontWeight="Bold"/>
+        </Border>
+
+        <!-- ВЕРХНЯЯ ПАНЕЛЬ С ВРЕМЕНЕМ -->
+        <DockPanel DockPanel.Dock="Top" Margin="0,6,0,0">
+            <TextBlock Text="Текущее время:" VerticalAlignment="Center" Margin="0,0,6,0"/>
+            <TextBlock x:Name="NowText" FontWeight="Bold" />
+        </DockPanel>
+
+        <!-- ТУЛБАР -->
+        <Border DockPanel.Dock="Top" Background="#FFF" Padding="8" Margin="0,6,0,6">
+            <StackPanel Orientation="Horizontal">
+                <!-- язык -->
+                <StackPanel Orientation="Horizontal">
+                    <Button Content="RU" Margin="0,0,6,0"
+                  Command="{Binding SetLangRuCommand}"
+                  Style="{StaticResource {x:Static ToolBar.ButtonStyleKey}}"/>
+                    <Button Content="EN" Margin="0,0,6,0"
+                Command="{Binding SetLangEnCommand}"
+                Style="{StaticResource {x:Static ToolBar.ButtonStyleKey}}"/>
+                    <Button Content="DE" Margin="0,0,12,0"
+                Command="{Binding SetLangDeCommand}"
+                Style="{StaticResource {x:Static ToolBar.ButtonStyleKey}}"/>
+                </StackPanel>
+
+                <Button Content="{loc:Loc Btn_Settings}" Margin="0,0,8,0"
+                Command="{Binding OpenSettingsCommand}"/>
+                <Button Content="{loc:Loc Btn_Filter}" Margin="0,0,8,0"
+                Command="{Binding OpenFilterCommand}"/>
+
+                <Separator Width="16"/>
+                <Button Content="{loc:Loc Btn_Add}" Command="{Binding AddCommand}" RenderTransformOrigin="15.197,0.459" Width="180"/>
+            </StackPanel>
+        </Border>
+
+        <!-- ТАБЛИЦА -->
+        <Border Margin="12" Padding="8" Background="#FFF" CornerRadius="8"
+            BorderBrush="#DDD" BorderThickness="1">
+            <DataGrid ItemsSource="{Binding View}"
+                SelectedItem="{Binding SelectedItem, Mode=TwoWay}"
+                AutoGenerateColumns="False"
+                CanUserAddRows="False"
+                IsReadOnly="True"
+                HeadersVisibility="Column">
+
+                <!-- ОДИН общий RowStyle: и подсветка, и контекстное меню -->
+                <DataGrid.RowStyle>
+                    <Style TargetType="DataGridRow">
+                        <Setter Property="Margin" Value="0,2,0,2"/>
+                        <Setter Property="Background">
+                            <Setter.Value>
+                                <MultiBinding Converter="{StaticResource TermRowBrushConverter}">
+                                    <Binding Path="DueAt"/>
+                                    <Binding Path="Status"/>
+                                </MultiBinding>
+                            </Setter.Value>
+                        </Setter>
+                        <Setter Property="ContextMenu">
+                            <Setter.Value>
+                                <ContextMenu>
+                                    <MenuItem Header="{loc:Loc Popup_Edit}"
+                            Command="{Binding DataContext.EditSelectedCommand,
+                                              RelativeSource={RelativeSource AncestorType=Window}}"/>
+                                    <MenuItem Header="{loc:Loc Popup_Reopen}"
+                            Command="{Binding DataContext.ReopenSelectedCommand,
+                                              RelativeSource={RelativeSource AncestorType=Window}}"/>
+                                </ContextMenu>
+                            </Setter.Value>
+                        </Setter>
+                        <EventSetter Event="PreviewMouseLeftButtonDown" Handler="DataGridRow_OnClick"/>
+                    </Style>
+                </DataGrid.RowStyle>
+
+                <!-- Колонки -->
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="{loc:Loc Grid_Title}"
+                              Binding="{Binding Title}" Width="*"/>
+
+                    <DataGridTextColumn Header="{loc:Loc Due}"
+                                Binding="{Binding DueAt, StringFormat={}{0:dd.MM.yyyy HH:mm}}"
+                                Width="220"/>
+
+                    <DataGridTextColumn Header="{loc:Loc Status}"
+                              Binding="{Binding Status}" Width="140"/>
+
+                    <!-- Кнопка Закрыть/✓ -->
+                    <DataGridTemplateColumn Header="{loc:Loc Btn_Complete}" Width="120">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <Button Command="{Binding DataContext.CompleteInlineCommand,
+                                          RelativeSource={RelativeSource AncestorType=Window}}"
+                        CommandParameter="{Binding}"
+                        Width="80" Height="28">
+                                    <Button.Style>
+                                        <Style TargetType="Button">
+                                            <Setter Property="Content" Value="Закрыть"/>
+                                            <Setter Property="ToolTip"  Value="Отметить как выполнено"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding Status}" Value="Completed">
+                                                    <Setter Property="Content"   Value="✓"/>
+                                                    <Setter Property="ToolTip"   Value="Выполнено"/>
+                                                    <Setter Property="IsEnabled" Value="False"/>
+                                                    <Setter Property="Opacity"   Value="0.8"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Button.Style>
+                                </Button>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                </DataGrid.Columns>
+
+            </DataGrid>
+        </Border>
+
+    </DockPanel>
+</Window>

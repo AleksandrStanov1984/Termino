@@ -1,0 +1,54 @@
+﻿<Window x:Class="Termino.App.FilterWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:Termino.App"
+        Title="Фильтр" Height="240" Width="440"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize"
+        ShowInTaskbar="False"
+        WindowStyle="ToolWindow">
+    
+    <Window.Resources>
+        <local:EnumEqualsConverter x:Key="EnumEqualsConverter"/>
+    </Window.Resources>
+
+    <Border Margin="8" Padding="10" Background="White" BorderBrush="#DDD" BorderThickness="1" CornerRadius="8">
+        <StackPanel>
+            <!-- режимы -->
+            <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                <CheckBox x:Name="ByDate"   Content="По дате" Margin="0,0,12,0"
+                  IsChecked="{Binding Mode, Converter={StaticResource EnumEqualsConverter}, ConverterParameter=ByDate, Mode=TwoWay}"
+                  Checked="ByDate_Checked" Unchecked="ByDate_Unchecked"/>
+                <CheckBox x:Name="ByStatus" Content="По срочности"
+                  IsChecked="{Binding Mode, Converter={StaticResource EnumEqualsConverter}, ConverterParameter=ByStatus, Mode=TwoWay}"
+                  Checked="ByStatus_Checked" Unchecked="ByStatus_Unchecked"/>
+
+                <CheckBox x:Name="ShowClosed" 
+                          Content="Показывать закрытые" Margin="12,0,0,0"
+                          IsChecked="{Binding ShowClosed, Mode=TwoWay}"
+                          Checked="AnyChanged" 
+                          Unchecked="AnyChanged"/>
+            </StackPanel>
+
+            <!-- по дате -->
+            <StackPanel x:Name="DatePanel" Orientation="Horizontal" Visibility="Collapsed">
+                <TextBlock Text="Дата:" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                <DatePicker SelectedDate="{Binding Date, Mode=TwoWay}"
+                    SelectedDateChanged="DatePicker_SelectedDateChanged"/>
+            </StackPanel>
+
+            <!-- по срочности -->
+            <StackPanel x:Name="StatusPanel" Visibility="Collapsed" Margin="0,6,0,0">
+                <CheckBox x:Name="Urgent" Content="Срочные (≤ 7 дней)"
+                  IsChecked="{Binding Urgent, Mode=TwoWay}"
+                  Checked="AnyChanged" Unchecked="AnyChanged"/>
+                <CheckBox x:Name="Soon"   Content="Скоро (8–15 дней)"
+                  IsChecked="{Binding Soon,   Mode=TwoWay}" Margin="0,6,0,0"
+                  Checked="AnyChanged" Unchecked="AnyChanged"/>
+                <CheckBox x:Name="Later"  Content="Не срочные (> 15)"
+                  IsChecked="{Binding Later,  Mode=TwoWay}" Margin="0,6,0,0"
+                  Checked="AnyChanged" Unchecked="AnyChanged"/>
+            </StackPanel>
+        </StackPanel>
+    </Border>
+</Window>
