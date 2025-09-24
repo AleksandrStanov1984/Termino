@@ -15,30 +15,39 @@ public partial class TermEditorViewModel : ObservableValidator
 {
     private readonly bool _isEdit;
 
-    public TermEditorViewModel(TermItem? item = null)
+    public TermEditorViewModel( TermItem? item = null )
     {
         _isEdit = item != null;
 
-        if (item == null)
+        if ( item == null )
         {
             // значения по умолчанию: + 1ч 10м
-            var min = DateTime.Now.AddMinutes(70);
+            var min = DateTime.Now.AddMinutes( 70 );
+
             DueDate = min.Date;
+
             DueTime = min.TimeOfDay;
+
             Status = TermStatus.Pending;
         }
         else
         {
             Id = item.Id;
+
             Title = item.Title;
+
             Description = item.Description;
+
             DueDate = item.DueAt.LocalDateTime.Date;
+
             DueTime = item.DueAt.LocalDateTime.TimeOfDay;
+
             Status = item.Status;
         }
 
         // один раз валидируем стартовые значения (чтобы сразу подсветка/кнопка)
         ValidateAllProperties();
+
         SaveCommand.NotifyCanExecuteChanged();
     }
 
@@ -68,62 +77,72 @@ public partial class TermEditorViewModel : ObservableValidator
     private TermStatus status = TermStatus.Pending;
 
     // Автовалидация и обновление доступности кнопки Сохранить
-    partial void OnTitleChanged(string? value)
+    partial void OnTitleChanged( string? value )
     {
-        ValidateProperty(value, nameof(Title));
+        ValidateProperty( value, nameof( Title ));
+
         SaveCommand.NotifyCanExecuteChanged();
     }
 
-    partial void OnDescriptionChanged(string? value)
+    partial void OnDescriptionChanged( string? value )
     {
-        ValidateProperty(value, nameof(Description));
+        ValidateProperty( value, nameof( Description ));
+
         SaveCommand.NotifyCanExecuteChanged();
     }
 
-    partial void OnDueDateChanged(DateTime? value)
+    partial void OnDueDateChanged( DateTime? value )
     {
-        ValidateProperty(value, nameof(DueDate));
+        ValidateProperty( value, nameof( DueDate ));
+
         SaveCommand.NotifyCanExecuteChanged();
     }
 
-    partial void OnDueTimeChanged(TimeSpan? value)
+    partial void OnDueTimeChanged( TimeSpan? value )
     {
-        ValidateProperty(value, nameof(DueTime));
+        ValidateProperty( value, nameof( DueTime ));
+
         SaveCommand.NotifyCanExecuteChanged();
     }
 
     private DateTimeOffset BuildDueAtLocal()
     {
         // Дата и время — обязательны, проверены выше
-        var local = DateTime.SpecifyKind(DueDate!.Value.Date + DueTime!.Value, DateTimeKind.Local);
-        return new DateTimeOffset(local);
+        var local = DateTime.SpecifyKind( DueDate!.Value.Date + DueTime!.Value, DateTimeKind.Local );
+
+        return new DateTimeOffset( local );
     }
 
     private bool ValidateBusinessRules(out string? error)
     {
         // 1) дата/время уже проверены атрибутами Required
         // 2) минимум через 1ч10м
-        var min = DateTimeOffset.Now.AddMinutes(70);
+        var min = DateTimeOffset.Now.AddMinutes( 70 );
+
         var due = BuildDueAtLocal();
 
-        if (due < min)
+        if ( due < min )
         {
-            error = $"Минимальное время: не раньше {min:dd.MM.yyyy HH:mm}";
+            error = $"Минимальное время: не раньше {min:dd.MM.yyyy HH:mm} ";
+
             return false;
         }
 
         error = null;
+
         return true;
     }
 
     private string CollectAllErrors()
     {
         var sb = new StringBuilder();
-        foreach (var kv in GetErrors().GroupBy(e => e.MemberNames.FirstOrDefault() ?? string.Empty))
+
+        foreach ( var kv in GetErrors().GroupBy( e => e.MemberNames.FirstOrDefault() ?? string.Empty ))
         {
-            foreach (var err in kv)
-                sb.AppendLine(err.ErrorMessage);
+            foreach ( var err in kv )
+                sb.AppendLine( err.ErrorMessage );
         }
+
         return sb.ToString().Trim();
     }
 
@@ -141,11 +160,12 @@ public partial class TermEditorViewModel : ObservableValidator
 
     // --- Команды ---
 
-    [RelayCommand(CanExecute = nameof(CanSave))]
+    [RelayCommand(CanExecute = nameof( CanSave ))]
     private void Save()
     {
         // подрезаем пробелы, чтобы "пять пробелов" не считались валидными
         Title = Title?.Trim();
+
         Description = Description?.Trim();
 
         // Проверяем DataAnnotations
@@ -154,40 +174,45 @@ public partial class TermEditorViewModel : ObservableValidator
         // И бизнес-правила
         string? businessError = null;
 
-        var isBusinessOk = ValidateBusinessRules(out businessError);
+        var isBusinessOk = ValidateBusinessRules( out businessError );
 
         if (HasErrors || !isBusinessOk)
         {
-            var text = !string.IsNullOrWhiteSpace(businessError)
+            var text = !string.IsNullOrWhiteSpace( businessError )
                 ? businessError!
                 : CollectAllErrors();
 
-            MessageBox.Show(text, "Вы заполнили не все поля !",
-                MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show( text, "Вы заполнили не все поля !",
+                MessageBoxButton.OK, MessageBoxImage.Warning );
+
             return;
         }
 
         // Всё ок — закрываем окно с DialogResult=true
-        CloseWithResult(true);
+        CloseWithResult( true );
     }
 
     private bool CanSave() =>
         !HasErrors &&
-        !string.IsNullOrWhiteSpace(Title) &&
-        !string.IsNullOrWhiteSpace(Description) &&
+        !string.IsNullOrWhiteSpace( Title ) &&
+        !string.IsNullOrWhiteSpace( Description ) &&
         DueDate is not null &&
         DueTime is not null;
 
     [RelayCommand]
-    private void Cancel() => CloseWithResult(false);
+    private void Cancel() => CloseWithResult( false );
 
     // аккуратное закрытие через владельца окна
-    private void CloseWithResult(bool result)
+    private void CloseWithResult( bool result )
     {
         var win = Application.Current?.Windows.OfType<Window>()
-                      .FirstOrDefault(w => ReferenceEquals(w.DataContext, this));
-        if (win is null) return;
+                      .FirstOrDefault( w => ReferenceEquals( w.DataContext, this ));
+
+        if ( win is null ) 
+            return;
+
         win.DialogResult = result;
+
         win.Close();
     }
 }

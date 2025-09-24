@@ -29,6 +29,7 @@ namespace Termino.App.Models
         private bool later;   // > 15 дней
 
         // показывать закрытые
-        [ObservableProperty] private bool showClosed;
+        [ObservableProperty] 
+        private bool showClosed;
     }
 }

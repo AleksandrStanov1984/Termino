@@ -39,51 +39,60 @@ public partial class MainViewModel : ObservableObject
 
     public MainViewModel()
     {
-        View = (ListCollectionView)CollectionViewSource.GetDefaultView(Items);
+        View = ( ListCollectionView )CollectionViewSource.GetDefaultView( Items );
 
         ApplyFilter();
 
-        _timer.Interval = TimeSpan.FromSeconds(1);
+        _timer.Interval = TimeSpan.FromSeconds( 1 );
 
         _timer.Tick += (_, __) => IsBannerVisible = false; // или твоя логика обновления
 
         _timer.Start();
     }
 
-    private static DateOnly AsLocalDate(DateTimeOffset dto)
-    => DateOnly.FromDateTime(dto.ToLocalTime().DateTime);
+    private static DateOnly AsLocalDate( DateTimeOffset dto )
+        => DateOnly.FromDateTime( dto.ToLocalTime().DateTime );
 
-    private static DateOnly AsLocalDate(DateTime date)
-        => DateOnly.FromDateTime(date);
+    private static DateOnly AsLocalDate( DateTime date )
+        => DateOnly.FromDateTime( date );
 
     public void ApplyFilter()
     {
-        if (View is null) return;
+        if ( View is null ) 
+            return;
+
         var f = Filter;
 
         View.Filter = o =>
         {
-            if (o is not TermItem t) return true;
+            if ( o is not TermItem t ) 
+                return true;
 
-            if (!f.ShowClosed && t.Status == TermStatus.Completed)
+            if ( !f.ShowClosed && t.Status == TermStatus.Completed )
                 return false;
 
-            if (f.Mode == FilterMode.ByDate && f.Date.HasValue)
+            if ( f.Mode == FilterMode.ByDate && f.Date.HasValue )
             {
-                var left = AsLocalDate(t.DueAt);
-                var right = AsLocalDate(f.Date.Value);
+                var left = AsLocalDate( t.DueAt );
+
+                var right = AsLocalDate( f.Date.Value );
+
                 return left == right;
             }
 
-            if (f.Mode == FilterMode.ByStatus)
+            if ( f.Mode == FilterMode.ByStatus )
             {
-                var days = (t.DueAt - DateTimeOffset.Now).TotalDays;
+                var days = ( t.DueAt - DateTimeOffset.Now ).TotalDays;
+
                 bool urgent = days <= 7;
+
                 bool soon = days > 7 && days <= 15;
+
                 bool later = days > 15;
 
                 bool any = f.Urgent || f.Soon || f.Later;
-                return !any || (f.Urgent && urgent) || (f.Soon && soon) || (f.Later && later);
+
+                return !any || ( f.Urgent && urgent ) || ( f.Soon && soon ) || ( f.Later && later );
             }
 
             return true;
@@ -97,7 +106,7 @@ public partial class MainViewModel : ObservableObject
     private void OpenFilter()
     {
         // не открывать вторую копию
-        if (_filterWindow is { IsVisible: true })
+        if ( _filterWindow is { IsVisible: true } )
         {
             _filterWindow.Activate();
 
@@ -105,7 +114,7 @@ public partial class MainViewModel : ObservableObject
         }
 
         // создаём окно и передаём callback, который сразу применяет фильтр
-        _filterWindow = new FilterWindow(View, Filter, ApplyFilter)
+        _filterWindow = new FilterWindow( View, Filter, ApplyFilter )
         {
             Owner = Application.Current.MainWindow,
             Topmost = false
@@ -115,11 +124,19 @@ public partial class MainViewModel : ObservableObject
         _filterWindow.Show();
     }
 
-    private void ShowBanner(string text, Color color)
+    private void ShowBanner( string text, Color color )
     {
-        BannerText=text; BannerBrush=new SolidColorBrush(color); OnPropertyChanged(nameof(BannerBrush));
+        BannerText = text;
+        
+        BannerBrush = new SolidColorBrush( color ); 
 
-        IsBannerVisible=true; _timer.Stop(); _timer.Start();
+        OnPropertyChanged( nameof(BannerBrush) );
+
+        IsBannerVisible = true;
+        
+        _timer.Stop(); 
+
+        _timer.Start();
     }
 
     [RelayCommand]
@@ -127,11 +144,14 @@ public partial class MainViewModel : ObservableObject
     {
         using var scope = App.AppHost!.Services.CreateScope();
 
-        var repo=scope.ServiceProvider.GetRequiredService<ITermRepository>();
+        var repo = scope.ServiceProvider.GetRequiredService<ITermRepository>();
 
-        var list=await repo.GetAllAsync();
+        var list = await repo.GetAllAsync();
 
-        Items.Clear(); foreach(var t in list) Items.Add(t);
+        Items.Clear();
+        
+        foreach( var t in list ) 
+            Items.Add( t );
 
         View.Refresh();
     }
@@ -139,25 +159,36 @@ public partial class MainViewModel : ObservableObject
     [RelayCommand] 
     private void SetLangRu()
     {
-        Localizer.Instance.Load("Ru"); OnPropertyChanged(string.Empty); 
+        Localizer.Instance.Load( "Ru" );
+        
+        OnPropertyChanged( string.Empty ); 
     }
 
     [RelayCommand]
     private void SetLangEn()
     {
-        Localizer.Instance.Load("En"); OnPropertyChanged(string.Empty); 
+        Localizer.Instance.Load( "En" );
+        
+        OnPropertyChanged( string.Empty ); 
     }
 
     [RelayCommand] 
     private void SetLangDe()
     { 
-        Localizer.Instance.Load("De"); OnPropertyChanged(string.Empty);
+        Localizer.Instance.Load( "De" );
+        
+        OnPropertyChanged( string.Empty );
     }
 
     [RelayCommand] 
     private void OpenSettings()
-    { var w=new SettingsWindow{
-        Owner = Application.Current.MainWindow }; w.ShowDialog(); 
+    { 
+        var w = new SettingsWindow
+        {
+            Owner = Application.Current.MainWindow 
+        };
+        
+        w.ShowDialog(); 
     }
 
     // ADD
@@ -165,14 +196,24 @@ public partial class MainViewModel : ObservableObject
     private async Task Add()
     {
         var vm = new TermEditorViewModel(); // пустая форма
-        var w = new TermEditorWindow { DataContext = vm, Owner = Application.Current.MainWindow };
-        if (w.ShowDialog() == true)
+
+        var w = new TermEditorWindow 
+        { 
+            DataContext = vm, Owner = Application.Current.MainWindow 
+        };
+
+        if ( w.ShowDialog() == true )
         {
             var entity = vm.ToEntity();
+
             using var s = App.AppHost.Services.CreateScope();
+
             var repo = s.ServiceProvider.GetRequiredService<ITermRepository>();
-            await repo.AddAsync(entity);
+
+            await repo.AddAsync( entity );
+
             await Refresh();
+
             ApplyFilter();
         }
     }
@@ -181,88 +222,103 @@ public partial class MainViewModel : ObservableObject
     [RelayCommand]
     private async Task EditSelected()
     {
-        if (SelectedItem is null) return;
+        if ( SelectedItem is null ) 
+            return;
 
         // передаём копию выбранного элемента
-        var vm = new TermEditorViewModel(new TermItem
-        {
-            Id = SelectedItem.Id,
-            Title = SelectedItem.Title,
-            Description = SelectedItem.Description,
-            DueAt = SelectedItem.DueAt,
-            Status = SelectedItem.Status
-        });
+        var vm = new TermEditorViewModel( 
+            new TermItem
+            {
+                Id = SelectedItem.Id,
+                Title = SelectedItem.Title,
+                Description = SelectedItem.Description,
+                DueAt = SelectedItem.DueAt,
+                Status = SelectedItem.Status
+            }
+        );
 
-        var w = new TermEditorWindow { DataContext = vm, Owner = Application.Current.MainWindow };
-        if (w.ShowDialog() == true)
+        var w = new TermEditorWindow 
+        { 
+            DataContext = vm,
+            Owner = Application.Current.MainWindow 
+        };
+
+        if ( w.ShowDialog() == true )
         {
             var entity = vm.ToEntity();
+
             using var s = App.AppHost.Services.CreateScope();
+
             var repo = s.ServiceProvider.GetRequiredService<ITermRepository>();
-            await repo.UpdateAsync(entity);
+
+            await repo.UpdateAsync( entity );
+
             await Refresh();
+
             ApplyFilter();
         }
     }
 
-
     [RelayCommand]
-    private async Task CompleteInline(TermItem? term)
+    private async Task CompleteInline( TermItem? term )
     {
-        if(term is null) 
+        if( term is null ) 
             return;
 
-        using var s = Termino.App.App.AppHost!.Services.CreateScope();
+        using var s = App.AppHost!.Services.CreateScope();
 
         var repo = s.ServiceProvider.GetRequiredService<ITermRepository>();
 
-        await repo.MarkCompletedAsync(term.Id);
+        await repo.MarkCompletedAsync( term.Id );
 
         await Refresh();
+
         ApplyFilter();
 
-        ShowBanner(Localizer.Instance["Banner_Completed"], Colors.SteelBlue);
+        ShowBanner( Localizer.Instance[ "Banner_Completed" ], Colors.SteelBlue );
     }
 
     [RelayCommand]
-    private async System.Threading.Tasks.Task ReopenSelected()
+    private async Task ReopenSelected()
     {
-        if(SelectedItem is null)
+        if( SelectedItem is null )
             return;
 
-        var vm = new ReopenViewModel(SelectedItem);
+        var vm = new ReopenViewModel( SelectedItem );
 
         var w = new ReopenWindow
         { 
-            DataContext=vm, Owner=System.Windows.Application.Current.MainWindow
+            DataContext = vm, 
+            Owner = Application.Current.MainWindow
         };
 
-        if(w.ShowDialog() == true)
+        if( w.ShowDialog() == true )
         {
-            using var s=Termino.App.App.AppHost!.Services.CreateScope();
+            using var s = App.AppHost!.Services.CreateScope();
 
-            var repo=s.ServiceProvider.GetRequiredService<ITermRepository>();
+            var repo = s.ServiceProvider.GetRequiredService<ITermRepository>();
 
-            await repo.ReopenAsync(SelectedItem.Id, vm.NewDueAt);
+            await repo.ReopenAsync( SelectedItem.Id, vm.NewDueAt );
 
             await Refresh();
+
             ApplyFilter();
 
-            ShowBanner(Localizer.Instance["Banner_Reopened"], Colors.SeaGreen);
+            ShowBanner( Localizer.Instance[ "Banner_Reopened" ], Colors.SeaGreen );
         }
     }
 
     [RelayCommand]
-    private async Task MarkCompleted(Guid id)
+    private async Task MarkCompleted( Guid id )
     {
         using var scope = App.AppHost!.Services.CreateScope();
 
-        var repo = scope.ServiceProvider.GetRequiredService<Termino.Data.Repositories.ITermRepository>();
+        var repo = scope.ServiceProvider.GetRequiredService<ITermRepository>();
 
-        await repo.MarkCompletedAsync(id);
+        await repo.MarkCompletedAsync( id );
 
         await Refresh();
-        ApplyFilter();
 
+        ApplyFilter();
     }
 }

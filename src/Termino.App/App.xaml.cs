@@ -12,25 +12,30 @@ namespace Termino.App;
 public partial class App : Application
 {
     public static IHost? AppHost { get; private set; }
+
     public static SettingsService? Settings { get; private set; }
 
-    protected override void OnStartup(StartupEventArgs e)
+    protected override void OnStartup( StartupEventArgs e )
     {
-        base.OnStartup(e);
-        Localizer.Instance.Load("ru");
+        base.OnStartup( e );
 
-        var dbPath = Path.Combine(AppContext.BaseDirectory, "termino.db");
-        var settingsPath = Path.Combine(AppContext.BaseDirectory, "settings.json");
-        Settings = new SettingsService(settingsPath);
+        Localizer.Instance.Load( "ru" );
+
+        var dbPath = Path.Combine( AppContext.BaseDirectory, "termino.db");
+
+        var settingsPath = Path.Combine( AppContext.BaseDirectory, "settings.json" );
+
+        Settings = new SettingsService( settingsPath );
 
         AppHost = Host.CreateDefaultBuilder()
-            .ConfigureServices(s => {
-                s.AddDbContext<TerminoDbContext>(o => o.UseSqlite($"Data Source={dbPath}"));
+            .ConfigureServices( s => {
+                s.AddDbContext<TerminoDbContext>( o => o.UseSqlite( $"Data Source = {dbPath}" ));
                 s.AddScoped<ITermRepository, TermRepository>();
             })
             .Build();
 
-        using(var scope = AppHost.Services.CreateScope()){
+        using( var scope = AppHost.Services.CreateScope() )
+        {
             var ctx = scope.ServiceProvider.GetRequiredService<TerminoDbContext>();
             ctx.Database.EnsureCreated();
         }
@@ -38,10 +43,18 @@ public partial class App : Application
         AppHost.Start();
     }
 
-    protected override async void OnExit(ExitEventArgs e)
+    protected override async void OnExit( ExitEventArgs e )
     {
-        try{ Settings?.Save(); }catch{}
-        if (AppHost != null) await AppHost.StopAsync();
-        base.OnExit(e);
+        try 
+        { 
+            Settings?.Save(); 
+        }
+        catch
+        {}
+
+        if ( AppHost != null )
+            await AppHost.StopAsync();
+
+        base.OnExit( e );
     }
 }
